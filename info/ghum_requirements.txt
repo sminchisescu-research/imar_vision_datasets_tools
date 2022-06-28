@@ -1,0 +1,15 @@
+absl-py>=0.6.1
+attrs>=19.3.0
+numpy>=1.13.3
+opencv-python>=4.2.0.34
+protobuf==4.21.0
+pytest>=5.4.3
+scipy>=1.2.2
+six>=1.5.0
+tensorflow-gpu==2.4.0
+tensorflow_probability==0.12.1
+ipython
+jupyter
+Pillow
+tensorflow-graphics-gpu==1.0.0
+pyrender
