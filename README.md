@@ -2,13 +2,13 @@
 
 ## Description
 This repository contains tools to process and visualize the IMAR Vision Datasets. In addition, we make available the code for the evaluation server for the 3 reconstruction challenges that we introduce.
-### Three-Dimensional Reconstruction of Human Interactions [[Paper](https://mihaifieraru.github.io/publication/fieraru_2020_cvpr/Fieraru_2020_CVPR.pdf)] [[Project / Data](http://vision.imar.ro/ci3d/)]
+### Three-Dimensional Reconstruction of Human Interactions [[Paper](https://mihaifieraru.github.io/publication/fieraru_2020_cvpr/Fieraru_2020_CVPR.pdf)] [[Project / Data / Challenges](http://vision.imar.ro/ci3d/)]
 <img src="./images/chi3d_teaser_vertical.gif" alt="drawing" width="600"/>
 
-### Learning Complex 3D Human Self-Contact [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_aaai/Fieraru_2021_AAAI.pdf)] [[Project / Data](http://vision.imar.ro/sc3d)]
+### Learning Complex 3D Human Self-Contact [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_aaai/Fieraru_2021_AAAI.pdf)] [[Project / Data / Challenges](http://vision.imar.ro/sc3d)]
 <img src="./images/teaser_sc3d_top.png" alt="drawing" width="600"/>
 
-### AIFit: Automatic 3D Human-Interpretable Feedback Models for Fitness Training [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_cvpr/Fieraru_2021_CVPR.pdf)] [[Project / Data](http://vision.imar.ro/fit3d)]
+### AIFit: Automatic 3D Human-Interpretable Feedback Models for Fitness Training [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_cvpr/Fieraru_2021_CVPR.pdf)] [[Project / Data / Challenges](http://vision.imar.ro/fit3d)]
 <img src="./images/teaser_fit3d_top.gif" alt="drawing" width="600"/>
 
 ## License
