@@ -1,14 +1,14 @@
 ## IMAR Vision Datasets Tools
 
 ## Description
-This repository contains tools to process and visualize the IMAR Vision Datasets. In addition, we make available the code for the evaluation server for the 3 reconstruction challenges that we introduce.
-### Three-Dimensional Reconstruction of Human Interactions [[Paper](https://mihaifieraru.github.io/publication/fieraru_2020_cvpr/Fieraru_2020_CVPR.pdf)] [[Project / Data / Challenges](http://vision.imar.ro/ci3d/)]
+This repository contains tools to process and visualize the IMAR Vision Datasets: [CHI3D](https://ci3d.imar.ro/chi3d), [FlickrCI3D](https://ci3d.imar.ro/flickrci3d), [HumanSC3D](https://sc3d.imar.ro/humansc3d), [FlickrSC3D](https://sc3d.imar.ro/flickrsc3d) and [Fit3D](https://fit3d.imar.ro/fit3d). In addition, we release the code for the evaluation server for the 3d reconstruction challenges that we introduce: [Close Interactions Reconstruction](https://ci3d.imar.ro/challenges), [Complex Self-Contact Reconstruction](https://sc3d.imar.ro/challenges) and [Fitness Exercises Reconstruction](https://fit3d.imar.ro/challenges).
+### Three-Dimensional Reconstruction of Human Interactions [[Paper](https://mihaifieraru.github.io/publication/fieraru_2020_cvpr/Fieraru_2020_CVPR.pdf)] [[Project / Data / Challenges](https://ci3d.imar.ro/)]
 <img src="./images/chi3d_teaser_vertical.gif" alt="drawing" width="600"/>
 
-### Learning Complex 3D Human Self-Contact [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_aaai/Fieraru_2021_AAAI.pdf)] [[Project / Data / Challenges](http://vision.imar.ro/sc3d)]
+### Learning Complex 3D Human Self-Contact [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_aaai/Fieraru_2021_AAAI.pdf)] [[Project / Data / Challenges](https://sc3d.imar.ro)]
 <img src="./images/teaser_sc3d_top.png" alt="drawing" width="600"/>
 
-### AIFit: Automatic 3D Human-Interpretable Feedback Models for Fitness Training [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_cvpr/Fieraru_2021_CVPR.pdf)] [[Project / Data / Challenges](http://vision.imar.ro/fit3d)]
+### AIFit: Automatic 3D Human-Interpretable Feedback Models for Fitness Training [[Paper](https://mihaifieraru.github.io/publication/fieraru_2021_cvpr/Fieraru_2021_CVPR.pdf)] [[Project / Data / Challenges](https://fit3d.imar.ro)]
 <img src="./images/teaser_fit3d_top.gif" alt="drawing" width="600"/>
 
 ## License
@@ -113,6 +113,11 @@ jupyter notebook imar_vision_datasets_tools/notebooks/visualize_flickr.ipynb
 To validate the format of your challenge submission file, run: 
 ```Shell
 jupyter notebook imar_vision_datasets_tools/notebooks/validate_prediction_format.ipynb
+```
+
+To visualize the predictions of your challenge submission file, take a look at the example here: 
+```Shell
+jupyter notebook imar_vision_datasets_tools/notebooks/visualize_prediction.ipynb
 ```
 
 For an example on how the evaluation server functions, run: 

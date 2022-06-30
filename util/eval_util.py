@@ -99,23 +99,29 @@ def load_data(data_path):
 
 
 
-def aggregate_metrics(metric_fns, seq_results):
+def aggregate_metrics(metric_fns, seq_results, has_contact_fr_id):
     agg_results = {}
     for subj_name in seq_results:
         for action_name in seq_results[subj_name]:
             for metric_fn in metric_fns:
-                metric_name = metric_fn.__name__
-                if metric_name not in agg_results:
-                    agg_results[metric_name] = []
-                agg_results[metric_name].append(seq_results[subj_name][action_name][metric_name])
+                metric_names = [metric_fn.__name__]
+                if has_contact_fr_id:
+                    metric_names.append(metric_fn.__name__ + '_at_contact_frame')
+                for metric_name in metric_names:
+                    if metric_name not in agg_results:
+                        agg_results[metric_name] = []
+                    agg_results[metric_name].append(seq_results[subj_name][action_name][metric_name])
     for metric_fn in metric_fns:
-        metric_name = metric_fn.__name__
-        agg_results[metric_name] = np.mean(np.array(agg_results[metric_name])).astype(float)
+        metric_names = [metric_fn.__name__]
+        if has_contact_fr_id:
+            metric_names.append(metric_fn.__name__ + '_at_contact_frame')
+        for metric_name in metric_names:
+            agg_results[metric_name] = np.mean(np.array(agg_results[metric_name])).astype(float)
     return agg_results
 
 
-
-def get_pred_types(data_pred):
+def get_pred_info(data_pred):
+    # this is a big hack
     pred_types = []
     for subj_name in data_pred:
         for action_name in data_pred[subj_name]:
@@ -128,6 +134,14 @@ def get_pred_types(data_pred):
     print('Detected prediction types are: ', pred_types)
     return pred_types
 
+def get_gt_info(data_gt):
+    if sorted(data_gt.keys()) == ['s01', 's05']:
+        dataset_name = 'chi3d'
+    elif sorted(data_gt.keys()) == ['s02', 's12', 's13']:
+        dataset_name = 'fit3d'
+    elif sorted(data_gt.keys()) == ['s04', 's05']:
+        dataset_name = 'humansc3d'
+    return dataset_name
 
 def validate_pred_format(data_pred_path, data_template_path):
     try:
@@ -138,7 +152,7 @@ def validate_pred_format(data_pred_path, data_template_path):
 
         data_pred = load_data(data_pred_path)
         data_template = load_data(data_template_path)
-        pred_types = get_pred_types(data_pred)
+        pred_types = get_pred_info(data_pred)
 
         if len(pred_types) == 0:
             return False, 'There should be at least one detected prediction type!'
@@ -224,26 +238,25 @@ class EvaluationServer():
 
     def joints3d_translation_error(self, gt, pred):
         pelvis_id = 0
-        t = euclidean_distance(gt[:, pelvis_id:pelvis_id+1, :], pred[:, pelvis_id:pelvis_id+1, :])
-        return np.mean(t)
+        return euclidean_distance(gt[:, pelvis_id:pelvis_id+1, :], pred[:, pelvis_id:pelvis_id+1, :])
 
     def joints3d_mpjpe(self, gt, pred):
-        return np.mean(lsp_joint_error(gt, pred))
+        return lsp_joint_error(gt, pred)
 
     def joints3d_mpjpe_pa(self, gt, pred):
-        return np.mean(lsp_joint_error(gt, pred, procrustes=True))
+        return lsp_joint_error(gt, pred, procrustes=True)
 
     def ghum_mpvpe(self, gt, pred):
-        return np.mean(self._vertex_error(gt, pred, model_type='ghum'))
+        return self._vertex_error(gt, pred, model_type='ghum')
 
     def ghum_mpvpe_pa(self, gt, pred):
-        return np.mean(self._vertex_error(gt, pred, model_type='ghum', procrustes=True))
+        return self._vertex_error(gt, pred, model_type='ghum', procrustes=True)
 
     def smplx_mpvpe(self, gt, pred):
-        return np.mean(self._vertex_error(gt, pred, model_type='smplx'))
+        return self._vertex_error(gt, pred, model_type='smplx')
 
     def smplx_mpvpe_pa(self, gt, pred):
-        return np.mean(self._vertex_error(gt, pred, model_type='smplx', procrustes=True))
+        return self._vertex_error(gt, pred, model_type='smplx', procrustes=True)
     
     def get_metric_fns(self, preds):
         data_type_to_metric_fns = {
@@ -304,7 +317,7 @@ class EvaluationServer():
         return new_pred_persons
 
 
-    def compute_seq_metrics(self, gts, preds, metric_fns):
+    def compute_seq_metrics(self, gts, preds, metric_fns, has_contact_fr_id):
         seq_results = {}
         for subj_name in gts:
             seq_results[subj_name] = {}
@@ -313,7 +326,10 @@ class EvaluationServer():
                 gt_persons = gts[subj_name][action_name]['persons']
                 pred_persons = preds[subj_name][action_name]['persons']
                 assert(gts[subj_name][action_name]['other']['video_fr_ids'] == preds[subj_name][action_name]['other']['video_fr_ids'])
-                
+                if has_contact_fr_id:
+                    frame_id = gts[subj_name][action_name]['other']['contact_fr_id']
+                    image_id = gts[subj_name][action_name]['other']['video_fr_ids'].index(frame_id)
+
                 cam_params = gts[subj_name][action_name]['other']['cam_params']
 
                 # matching by bounding box
@@ -333,7 +349,9 @@ class EvaluationServer():
                         gt_data = gt['smplx']
                         pred_data = pred['smplx']
                     metric_result = metric_fn(gt_data, pred_data)
-                    seq_results[subj_name][action_name][metric_name] = metric_result
+                    seq_results[subj_name][action_name][metric_name] = np.mean(metric_result)
+                    if has_contact_fr_id:
+                        seq_results[subj_name][action_name][metric_name + '_at_contact_frame'] = metric_result[image_id]
         return seq_results
 
 
@@ -341,11 +359,13 @@ class EvaluationServer():
         all_metric_names = ["joints3d_translation_error", "joints3d_mpjpe", "joints3d_mpjpe_pa", "ghum_mpvpe", "ghum_mpvpe_pa", "smplx_mpvpe", "smplx_mpvpe_pa"]
         data_pred = load_data(data_pred_path)
         data_gt = load_data(data_gt_path)
+        dataset_name = get_gt_info(data_gt)
+        has_contact_fr_id = dataset_name in ['chi3d', 'humansc3d']
         is_valid, message = validate_pred_format(data_pred_path, data_template_path)
         if is_valid:
             metric_fns = self.get_metric_fns(data_pred)
-            seq_results = self.compute_seq_metrics(data_gt, data_pred, metric_fns)
-            agg_results = aggregate_metrics(metric_fns, seq_results)
+            seq_results = self.compute_seq_metrics(data_gt, data_pred, metric_fns, has_contact_fr_id)
+            agg_results = aggregate_metrics(metric_fns, seq_results, has_contact_fr_id)
             for key in all_metric_names:
                 if key not in agg_results:
                     agg_results[key] = -1.0
