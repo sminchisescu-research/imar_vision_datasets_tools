@@ -98,6 +98,23 @@ def load_data(data_path):
     return data
 
 
+def save_data(old_data, data_path):
+    data = copy.deepcopy(old_data)
+    for subj_name in data:
+        for action_name in data[subj_name]:
+            for data_type in data[subj_name][action_name]['persons'][0]:
+                for person_id in range(len(data[subj_name][action_name]['persons'])):
+                    for key in data[subj_name][action_name]['persons'][person_id][data_type]:
+                        if type(data[subj_name][action_name]['persons'][person_id][data_type][key]) is np.ndarray:
+                            data[subj_name][action_name]['persons'][person_id][data_type][key] = data[subj_name][action_name]['persons'][person_id][data_type][key].tolist()
+            if 'cam_params' in  data[subj_name][action_name]['other']:
+                for key in data[subj_name][action_name]['other']['cam_params']:
+                    for subkey in data[subj_name][action_name]['other']['cam_params'][key]:
+                        if type(data[subj_name][action_name]['other']['cam_params'][key][subkey]) is np.ndarray:
+                            data[subj_name][action_name]['other']['cam_params'][key][subkey] = data[subj_name][action_name]['other']['cam_params'][key][subkey].tolist()
+    with open(data_path, 'w') as outfile:
+        json.dump(data, outfile)
+
 
 def aggregate_metrics(metric_fns, seq_results, has_contact_fr_id):
     agg_results = {}
@@ -307,7 +324,7 @@ class EvaluationServer():
             gt = np.array([gt_person_bboxes[data_type] for gt_person_bboxes in gt_bboxes]).transpose((1, 0, 2))
             iou_0 = compute_iou_distance(pred, gt).sum(axis=1)
             iou_1 = compute_iou_distance(pred[:, [1, 0], :], gt).sum(axis=1)
-            change_order = iou_0 > iou_1
+            change_order = iou_0 < iou_1
             for person_id in range(len(gt_persons)):
                 new_pred_persons[person_id][data_type] = copy.deepcopy(pred_persons[person_id][data_type])
                 # copy entry from the other person
@@ -332,8 +349,8 @@ class EvaluationServer():
 
                 cam_params = gts[subj_name][action_name]['other']['cam_params']
 
-                # matching by bounding box
                 pred_persons = self.match_persons_by_bbox(pred_persons, gt_persons, cam_params)
+
                 pred = merge_persons(pred_persons)
                 gt = merge_persons(gt_persons)
 
@@ -357,12 +374,12 @@ class EvaluationServer():
 
     def eval_challenge(self, data_pred_path, data_gt_path, data_template_path):
         all_metric_names = ["joints3d_translation_error", "joints3d_mpjpe", "joints3d_mpjpe_pa", "ghum_mpvpe", "ghum_mpvpe_pa", "smplx_mpvpe", "smplx_mpvpe_pa"]
-        data_pred = load_data(data_pred_path)
-        data_gt = load_data(data_gt_path)
-        dataset_name = get_gt_info(data_gt)
-        has_contact_fr_id = dataset_name in ['chi3d', 'humansc3d']
         is_valid, message = validate_pred_format(data_pred_path, data_template_path)
         if is_valid:
+            data_pred = load_data(data_pred_path)
+            data_gt = load_data(data_gt_path)
+            dataset_name = get_gt_info(data_gt)
+            has_contact_fr_id = dataset_name in ['chi3d', 'humansc3d']
             metric_fns = self.get_metric_fns(data_pred)
             seq_results = self.compute_seq_metrics(data_gt, data_pred, metric_fns, has_contact_fr_id)
             agg_results = aggregate_metrics(metric_fns, seq_results, has_contact_fr_id)
