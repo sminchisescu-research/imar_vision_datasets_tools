@@ -69,6 +69,10 @@ def h36m_to_lsp(j3d):
     j3d_lsp = j3d_j17[:, :14, ...] - j3d_j17[:, 14:15, ...]
     return j3d_lsp
 
+def center_blazeposeghum_33(arr):
+    mid_hip = (arr[:, 23:24, ...] + arr[:, 24:25, ...]) / 2.0
+    return arr - mid_hip
+
 def lsp_joint_error(gt, pred, procrustes=False):
     gt = h36m_to_lsp(gt)
     pred = h36m_to_lsp(pred)
@@ -123,7 +127,7 @@ def aggregate_metrics(metric_fns, seq_results, has_contact_fr_id):
             for metric_fn in metric_fns:
                 metric_names = [metric_fn.__name__]
                 if has_contact_fr_id:
-                    metric_names.append(metric_fn.__name__ + '_at_contact_frame')
+                    metric_names.append(metric_fn.__name__ + '_c')
                 for metric_name in metric_names:
                     if metric_name not in agg_results:
                         agg_results[metric_name] = []
@@ -131,7 +135,7 @@ def aggregate_metrics(metric_fns, seq_results, has_contact_fr_id):
     for metric_fn in metric_fns:
         metric_names = [metric_fn.__name__]
         if has_contact_fr_id:
-            metric_names.append(metric_fn.__name__ + '_at_contact_frame')
+            metric_names.append(metric_fn.__name__ + '_c')
         for metric_name in metric_names:
             agg_results[metric_name] = np.mean(np.array(agg_results[metric_name])).astype(float)
     return agg_results
@@ -144,7 +148,7 @@ def get_pred_info(data_pred):
         for action_name in data_pred[subj_name]:
             pred = data_pred[subj_name][action_name]['persons'][0]
             for key in pred:
-                if key in ['gpp', 'smplx', 'joints3d']:
+                if key in ['gpp', 'smplx', 'joints3d', 'blazeposeghum_33']:
                      pred_types.append(key)
             break
         break
@@ -200,6 +204,12 @@ def validate_pred_format(data_pred_path, data_template_path):
                                         return False, 'Shape mismatch %s!' % pred_subtype
                                 if pred[pred_type][pred_subtype].shape[1] not in [17, 25]:
                                     return False, 'Shape mismatch %s! Second dimension should be either 17 or 25!'
+                            elif pred_subtype == 'blazeposeghum_33':
+                                for dim in [0, 2]:
+                                    if pred[pred_type][pred_subtype].shape[dim] != template[pred_type][pred_subtype].shape[dim]:
+                                        return False, 'Shape mismatch %s!' % pred_subtype
+                                if pred[pred_type][pred_subtype].shape[1] not in [33]:
+                                    return False, 'Shape mismatch %s! Second dimension should be 33!'
                             else:
                                 if pred[pred_type][pred_subtype].shape != template[pred_type][pred_subtype].shape:
                                     return False, 'Shape mismatch %s!' % pred_subtype
@@ -253,7 +263,7 @@ class EvaluationServer():
         error = euclidean_distance(pred_vertices_hat, gt_vertices) if procrustes else euclidean_distance(pred_vertices, gt_vertices)
         return error
 
-    def joints3d_translation_error(self, gt, pred):
+    def joints3d_transl_err(self, gt, pred):
         pelvis_id = 0
         return euclidean_distance(gt[:, pelvis_id:pelvis_id+1, :], pred[:, pelvis_id:pelvis_id+1, :])
 
@@ -262,6 +272,24 @@ class EvaluationServer():
 
     def joints3d_mpjpe_pa(self, gt, pred):
         return lsp_joint_error(gt, pred, procrustes=True)
+    
+    def blazeposeghum_33_transl_err(self, gt, pred):
+        mid_hip_gt = (gt[:, 23:24, ...] + gt[:, 24:25, ...]) / 2.0
+        mid_hip_pred = (pred[:, 23:24, ...] + pred[:, 24:25, ...]) / 2.0        
+        return euclidean_distance(mid_hip_gt, mid_hip_pred)    
+
+    def blazeposeghum_33_mpjpe(self, gt, pred):
+        pred = center_blazeposeghum_33(pred)
+        gt = center_blazeposeghum_33(gt)
+        error = euclidean_distance(pred, gt)
+        return error
+
+    def blazeposeghum_33_mpjpe_pa(self, gt, pred):
+        pred = center_blazeposeghum_33(pred)
+        gt = center_blazeposeghum_33(gt)
+        pred_hat = compute_similarity_transform_batch(pred, gt)
+        error = euclidean_distance(pred_hat, gt)
+        return error
 
     def ghum_mpvpe(self, gt, pred):
         return self._vertex_error(gt, pred, model_type='ghum')
@@ -277,7 +305,8 @@ class EvaluationServer():
     
     def get_metric_fns(self, preds):
         data_type_to_metric_fns = {
-            'joints3d': [self.joints3d_translation_error, self.joints3d_mpjpe, self.joints3d_mpjpe_pa], 
+            'joints3d': [self.joints3d_transl_err, self.joints3d_mpjpe, self.joints3d_mpjpe_pa], 
+            'blazeposeghum_33': [self.blazeposeghum_33_transl_err, self.blazeposeghum_33_mpjpe, self.blazeposeghum_33_mpjpe_pa], 
             'gpp': [self.ghum_mpvpe, self.ghum_mpvpe_pa], 
             'smplx': [self.smplx_mpvpe, self.smplx_mpvpe_pa]
         }
@@ -299,6 +328,8 @@ class EvaluationServer():
             for data_type in data_types:
                 if data_type == 'joints3d':
                     points_3d_all_fr = person['joints3d']['joints3d']
+                elif data_type == 'blazeposeghum_33':
+                    points_3d_all_fr = person['blazeposeghum_33']['blazeposeghum_33']
                 elif data_type == 'gpp':
                     points_3d_all_fr = self.ghum_helper.ghum_model.pose(self.ghum_helper.get_world_gpp(person['gpp'])).vertices.numpy()
                 elif data_type == 'smplx':
@@ -359,6 +390,9 @@ class EvaluationServer():
                     if metric_name.startswith('joints3d'):
                         gt_data = gt['joints3d']['joints3d']
                         pred_data = pred['joints3d']['joints3d']
+                    elif metric_name.startswith('blazeposeghum_33'):
+                        gt_data = gt['blazeposeghum_33']['blazeposeghum_33']
+                        pred_data = pred['blazeposeghum_33']['blazeposeghum_33']
                     elif metric_name.startswith('ghum'):
                         gt_data = gt['gpp']
                         pred_data = pred['gpp']
@@ -368,12 +402,12 @@ class EvaluationServer():
                     metric_result = metric_fn(gt_data, pred_data)
                     seq_results[subj_name][action_name][metric_name] = np.mean(metric_result)
                     if has_contact_fr_id:
-                        seq_results[subj_name][action_name][metric_name + '_at_contact_frame'] = metric_result[image_id]
+                        seq_results[subj_name][action_name][metric_name + '_c'] = metric_result[image_id]
         return seq_results
 
 
     def eval_challenge(self, data_pred_path, data_gt_path, data_template_path):
-        all_metric_names = ["joints3d_translation_error", "joints3d_mpjpe", "joints3d_mpjpe_pa", "ghum_mpvpe", "ghum_mpvpe_pa", "smplx_mpvpe", "smplx_mpvpe_pa"]
+        all_metric_names = ["joints3d_transl_err", "joints3d_mpjpe", "joints3d_mpjpe_pa", "blazeposeghum_33_transl_err", "blazeposeghum_33_mpjpe", "blazeposeghum_33_mpjpe_pa", "ghum_mpvpe", "ghum_mpvpe_pa", "smplx_mpvpe", "smplx_mpvpe_pa"]
         is_valid, message = validate_pred_format(data_pred_path, data_template_path)
         if is_valid:
             data_pred = load_data(data_pred_path)
