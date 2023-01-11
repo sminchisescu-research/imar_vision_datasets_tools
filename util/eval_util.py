@@ -348,8 +348,8 @@ class EvaluationServer():
         data_types = [key for key in pred_persons[0]]
         pred_bboxes = self.get_bboxes(pred_persons, data_types, cam_params)
         gt_bboxes = self.get_bboxes(gt_persons, data_types, cam_params)
-
-        new_pred_persons = [{}] * len(gt_persons)
+        
+        new_pred_persons = copy.deepcopy(pred_persons)
         for data_type in data_types:
             pred = np.array([pred_person_bboxes[data_type] for pred_person_bboxes in pred_bboxes]).transpose((1, 0, 2))
             gt = np.array([gt_person_bboxes[data_type] for gt_person_bboxes in gt_bboxes]).transpose((1, 0, 2))
@@ -357,11 +357,9 @@ class EvaluationServer():
             iou_1 = compute_iou_distance(pred[:, [1, 0], :], gt).sum(axis=1)
             change_order = iou_0 < iou_1
             for person_id in range(len(gt_persons)):
-                new_pred_persons[person_id][data_type] = copy.deepcopy(pred_persons[person_id][data_type])
-                # copy entry from the other person
                 for key in new_pred_persons[person_id][data_type]:
-                    new_pred_persons[person_id][data_type][key][change_order] = pred_persons[1-person_id][data_type][key][change_order]
-        
+                    new_pred_persons[person_id][data_type][key][change_order] = pred_persons[1-person_id][data_type][key][change_order]            
+      
         return new_pred_persons
 
 
@@ -373,6 +371,7 @@ class EvaluationServer():
                 seq_results[subj_name][action_name] = {}
                 gt_persons = gts[subj_name][action_name]['persons']
                 pred_persons = preds[subj_name][action_name]['persons']
+
                 assert(gts[subj_name][action_name]['other']['video_fr_ids'] == preds[subj_name][action_name]['other']['video_fr_ids'])
                 if has_contact_fr_id:
                     frame_id = gts[subj_name][action_name]['other']['contact_fr_id']

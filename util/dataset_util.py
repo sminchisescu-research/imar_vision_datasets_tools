@@ -24,7 +24,9 @@ def read_cam_params(cam_path):
                 cam_params[key1][key2] = np.array(cam_params[key1][key2]) 
     return cam_params
 
-def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_name):
+def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_name, subject="w_markers"):
+    if subject == 'wo_markers':
+        assert(dataset_name == 'chi3d')
     vid_path = '%s/%s/%s/%s/videos/%s/%s.mp4' % (data_root, dataset_name, subset, subj_name, camera_name, action_name)
     cam_path = '%s/%s/%s/%s/camera_parameters/%s/%s.json' % (data_root, dataset_name, subset, subj_name, camera_name, action_name)
     j3d_path = '%s/%s/%s/%s/joints3d_25/%s.json' % (data_root, dataset_name, subset, subj_name, action_name)
@@ -35,11 +37,12 @@ def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_na
 
     with open(j3d_path) as f:
         j3ds = np.array(json.load(f)['joints3d_25'])
+    seq_len = j3ds.shape[-3]
     with open(gpp_path) as f:
         gpps = json.load(f)
     with open(smplx_path) as f:
         smplx_params = json.load(f)
-    frames = read_video(vid_path)
+    frames = read_video(vid_path)[:seq_len]
     
     dataset_to_ann_type = {'chi3d': 'interaction_contact_signature', 
                            'fit3d': 'rep_ann', 
@@ -50,7 +53,16 @@ def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_na
         ann_path = '%s/%s/%s/%s/%s.json' % (data_root, dataset_name, subset, subj_name, ann_type)
         with open(ann_path) as f:
             annotations = json.load(f)
+    
+    if dataset_name == 'chi3d': # 2 people in each frame
+        subj_id = 0 if subject == "w_markers" else 1
+        j3ds = j3ds[subj_id, ...]
+        for key in gpps:
+            gpps[key] = gpps[key][subj_id]
+        for key in smplx_params:
+            smplx_params[key] = smplx_params[key][subj_id]
         
+    
     return frames, j3ds, cam_params, gpps, smplx_params, annotations
 
 
