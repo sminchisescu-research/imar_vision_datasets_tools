@@ -321,38 +321,26 @@ class EvaluationServer():
             break
         return metric_fns
 
-    def get_bboxes(self, persons, data_types, cam_params):
+
+    def get_bboxes(self, persons):
         bboxes = []
         for person in persons:
-            person_bboxes = {}
-            for data_type in data_types:
-                if data_type == 'joints3d':
-                    points_3d_all_fr = person['joints3d']['joints3d']
-                elif data_type == 'blazeposeghum_33':
-                    points_3d_all_fr = person['blazeposeghum_33']['blazeposeghum_33']
-                elif data_type == 'gpp':
-                    points_3d_all_fr = self.ghum_helper.ghum_model.pose(self.ghum_helper.get_world_gpp(person['gpp'])).vertices.numpy()
-                elif data_type == 'smplx':
-                    points_3d_all_fr = self.smplx_helper.smplx_model(**self.smplx_helper.get_world_smplx_params(person['smplx'])).vertices.detach().cpu().numpy()
-                new_shape = [points_3d_all_fr.shape[0], points_3d_all_fr.shape[1], 2]
-                points_2d = project_3d_to_2d(points_3d_all_fr.reshape(-1, 3), cam_params['intrinsics_wo_distortion'], 'wo_distortion').reshape(new_shape)
-                person_bboxes[data_type] = np.concatenate([np.min(points_2d, axis=1), np.max(points_2d, axis=1)], axis=1)
+            person_bboxes = person['bbox']['bbox']
             bboxes.append(person_bboxes)
         return bboxes
-
 
     def match_persons_by_bbox(self, pred_persons, gt_persons, cam_params):
         if len(pred_persons) == 1 and len(gt_persons) == 1:
             return pred_persons
 
         data_types = [key for key in pred_persons[0]]
-        pred_bboxes = self.get_bboxes(pred_persons, data_types, cam_params)
-        gt_bboxes = self.get_bboxes(gt_persons, data_types, cam_params)
+        pred_bboxes = self.get_bboxes(pred_persons)
+        gt_bboxes = self.get_bboxes(gt_persons)
         
         new_pred_persons = copy.deepcopy(pred_persons)
         for data_type in data_types:
-            pred = np.array([pred_person_bboxes[data_type] for pred_person_bboxes in pred_bboxes]).transpose((1, 0, 2))
-            gt = np.array([gt_person_bboxes[data_type] for gt_person_bboxes in gt_bboxes]).transpose((1, 0, 2))
+            pred = np.array(pred_bboxes).transpose((1, 0, 2))
+            gt = np.array(gt_bboxes).transpose((1, 0, 2))
             iou_0 = compute_iou_distance(pred, gt).sum(axis=1)
             iou_1 = compute_iou_distance(pred[:, [1, 0], :], gt).sum(axis=1)
             change_order = iou_0 < iou_1
@@ -361,7 +349,6 @@ class EvaluationServer():
                     new_pred_persons[person_id][data_type][key][change_order] = pred_persons[1-person_id][data_type][key][change_order]            
       
         return new_pred_persons
-
 
     def compute_seq_metrics(self, gts, preds, metric_fns, has_contact_fr_id):
         seq_results = {}
