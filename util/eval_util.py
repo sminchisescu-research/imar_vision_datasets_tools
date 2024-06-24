@@ -185,7 +185,7 @@ def validate_pred_format(data_pred_path, data_template_path):
             if data_pred[subj_name].keys() != data_template[subj_name].keys():
                 return False, 'Actions for subject %s are not the same as in ground truth' % subj_name
             for action_name in data_pred[subj_name]:
-                if gts[subj_name][action_name]['other']['video_fr_ids'] != preds[subj_name][action_name]['other']['video_fr_ids']:
+                if data_template[subj_name][action_name]['other']['video_fr_ids'] != data_pred[subj_name][action_name]['other']['video_fr_ids']:
                     return False, 'Frames in video_fr_ids are not exactly the same as in the template file!'
                 persons_pred = data_pred[subj_name][action_name]['persons']
                 persons_template = data_template[subj_name][action_name]['persons']
