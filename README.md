@@ -139,6 +139,15 @@ month = {June},
 year = {2020}
 }
 ```
+and
+```
+@article{fieraru2023_interactions_arxiv,
+title={Reconstructing Three-Dimensional Models of Interacting Humans},
+author={Fieraru, Mihai and Zanfir, Mihai and Oneata, Elisabeta and Popa, Alin-Ionut and Olaru, Vlad and Sminchisescu, Cristian},
+journal={arXiv preprint arXiv:2308.01854},
+year={2023}
+}
+```
 
 For HumanSC3D, FlickrSC3D_signature, FlickrSC3D_classification, please cite:
 ```
